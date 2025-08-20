@@ -7,13 +7,26 @@ import { habitRoutes } from './routes/habits'
 import { userRoutes } from './routes/users'
 import { setupRoutes } from './routes/setup'
 import { analyticsRoutes } from './routes/analytics'
+import { databaseRoutes } from './routes/database'
 import { HabitService } from './services/HabitService'
 import { UserService } from './services/UserService'
 import { SetupService } from './services/SetupService'
 import { ProgressionService } from './services/ProgressionService'
 import { AnalyticsService } from './services/AnalyticsService'
+import { migrationManager } from './database/migrations'
 
 const app = new Hono()
+
+// Initialize database and run migrations
+async function initializeDatabase() {
+	try {
+		await migrationManager.migrate();
+		console.log('📊 Database initialized successfully');
+	} catch (error) {
+		console.error('❌ Database initialization failed:', error);
+		process.exit(1);
+	}
+}
 
 // Initialize services
 const progressionService = new ProgressionService()
@@ -53,6 +66,7 @@ app.route('/api/habits', habitRoutes)
 app.route('/api/users', userRoutes)
 app.route('/api/setup', setupRoutes)
 app.route('/api/analytics', analyticsRoutes)
+app.route('/api/database', databaseRoutes)
 
 // Error handling
 app.onError((err, c) => {
@@ -72,10 +86,21 @@ app.notFound((c) => {
 	}, 404)
 })
 
-const port = process.env.PORT || 3000
-console.log(`🚀 Habit TKS server running on port ${port}`)
+const port = process.env.PORT || 3055
 
-serve({
-	fetch: app.fetch,
-	port: Number(port)
-})
+// Start server after database initialization
+async function startServer() {
+	await initializeDatabase();
+
+	console.log(`🚀 Habit TKS server running on port ${port}`)
+
+	serve({
+		fetch: app.fetch,
+		port: Number(port)
+	})
+}
+
+startServer().catch((error) => {
+	console.error('❌ Failed to start server:', error);
+	process.exit(1);
+});

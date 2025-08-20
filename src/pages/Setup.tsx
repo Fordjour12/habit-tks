@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { useToast } from '../components/ToastContainer';
 import { Target, Zap, Trophy, CheckCircle } from 'lucide-react';
+import FormField from '../components/FormField';
+import { createUserSchema, validateForm } from '../utils/validation';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface SetupProps {
   onSetupComplete: () => void;
@@ -8,20 +12,34 @@ interface SetupProps {
 
 const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
   const { createUser } = useUser();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const validation = validateForm(createUserSchema, formData);
+    if (!validation.success) {
+      setFieldErrors(validation.errors);
+      showToast({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fix the errors in the form'
+      });
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
+    setFieldErrors({});
 
     try {
-      await createUser(formData);
+      await createUser(validation.data);
       
       // Setup account with default habits
       const response = await fetch('/api/setup/account', {
@@ -30,13 +48,23 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
       });
 
       if (response.ok) {
+        showToast({
+          type: 'success',
+          title: 'Account Created!',
+          message: 'Your account has been set up successfully'
+        });
         localStorage.setItem('habit-tks-setup', 'completed');
         onSetupComplete();
       } else {
         throw new Error('Failed to setup account');
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to create account');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
+      showToast({
+        type: 'error',
+        title: 'Setup Failed',
+        message: errorMessage
+      });
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +139,7 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
             >
               {isLoading ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <LoadingSpinner size="sm" variant="white" />
                   <span>Setting up...</span>
                 </>
               ) : (

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { Trophy, BarChart3, Settings, Home, Target } from 'lucide-react';
+import { Trophy, BarChart3, Settings, Home, Target, Palette, Database } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { state } = useUser();
@@ -12,6 +12,8 @@ const Header: React.FC = () => {
     { name: 'Habits', href: '/habits', icon: Target },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Components', href: '/components', icon: Palette },
+    { name: 'Database', href: '/database', icon: Database },
   ];
 
   const getTierColor = (tier: string) => {
