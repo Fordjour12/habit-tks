@@ -11,14 +11,14 @@ export class HabitRepository {
 
   async createHabit(habitData: CreateHabitRequest): Promise<Habit> {
     const habitId = `habit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const insertStmt = this.db.prepare(`
       INSERT INTO habits (
         id, user_id, name, description, category, tier, frequency, 
-        reminder_time, notes, priority, streak_tracking, skip_allowed, start_date
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        reminder_time, notes, priority, streak_tracking, skip_allowed, start_date, archived
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     insertStmt.run(
       habitId,
       habitData.userId,
@@ -32,10 +32,15 @@ export class HabitRepository {
       habitData.priority,
       habitData.streakTracking ? 1 : 0,
       habitData.skipAllowed ? 1 : 0,
-      habitData.startDate
+      habitData.startDate,
+      0 // archived = false by default
     );
 
-    return this.getHabitById(habitId);
+    const habit = await this.getHabitById(habitId);
+    if (!habit) {
+      throw new Error('Failed to create habit');
+    }
+    return habit;
   }
 
   async getHabitById(habitId: string): Promise<Habit | null> {
@@ -43,13 +48,13 @@ export class HabitRepository {
       SELECT 
         id, user_id, name, description, category, tier, frequency,
         reminder_time, notes, priority, streak_tracking, skip_allowed,
-        start_date, is_active, created_at, updated_at
+        start_date, is_active, archived, created_at, updated_at
       FROM habits 
       WHERE id = ?
     `);
-    
+
     const result = stmt.get(habitId) as any;
-    
+
     if (!result) return null;
 
     return {
@@ -67,6 +72,7 @@ export class HabitRepository {
       skipAllowed: Boolean(result.skip_allowed),
       startDate: result.start_date,
       isActive: Boolean(result.is_active),
+      archived: Boolean(result.archived),
       createdAt: new Date(result.created_at),
       updatedAt: new Date(result.updated_at)
     };
@@ -77,23 +83,23 @@ export class HabitRepository {
       SELECT 
         id, user_id, name, description, category, tier, frequency,
         reminder_time, notes, priority, streak_tracking, skip_allowed,
-        start_date, is_active, created_at, updated_at
+        start_date, is_active, archived, created_at, updated_at
       FROM habits 
       WHERE user_id = ? AND is_active = 1
     `;
-    
+
     const params: any[] = [userId];
-    
+
     if (tier) {
       query += ' AND tier = ?';
       params.push(tier);
     }
-    
+
     query += ' ORDER BY priority DESC, created_at ASC';
-    
+
     const stmt = this.db.prepare(query);
     const results = stmt.all(...params) as any[];
-    
+
     return results.map(result => ({
       id: result.id,
       userId: result.user_id,
@@ -109,6 +115,7 @@ export class HabitRepository {
       skipAllowed: Boolean(result.skip_allowed),
       startDate: result.start_date,
       isActive: Boolean(result.is_active),
+      archived: Boolean(result.archived),
       createdAt: new Date(result.created_at),
       updatedAt: new Date(result.updated_at)
     }));
@@ -117,7 +124,7 @@ export class HabitRepository {
   async updateHabit(habitId: string, updates: Partial<Habit>): Promise<Habit> {
     const fields: string[] = [];
     const values: any[] = [];
-    
+
     // Build dynamic update query
     if (updates.name !== undefined) {
       fields.push('name = ?');
@@ -167,27 +174,27 @@ export class HabitRepository {
       fields.push('is_active = ?');
       values.push(updates.isActive ? 1 : 0);
     }
-    
+
     if (fields.length === 0) {
       return this.getHabitById(habitId) as Promise<Habit>;
     }
-    
+
     fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(habitId);
-    
+
     const updateStmt = this.db.prepare(`
       UPDATE habits 
       SET ${fields.join(', ')}
       WHERE id = ?
     `);
-    
+
     updateStmt.run(...values);
 
     const updatedHabit = await this.getHabitById(habitId);
     if (!updatedHabit) {
       throw new Error('Habit not found after update');
     }
-    
+
     return updatedHabit;
   }
 
@@ -198,13 +205,13 @@ export class HabitRepository {
 
   async completeHabit(habitId: string, completionData: CompleteHabitRequest): Promise<void> {
     const completionId = `completion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const insertStmt = this.db.prepare(`
       INSERT INTO habit_completions (
         id, habit_id, user_id, notes, duration, intensity, additional_data
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     insertStmt.run(
       completionId,
       habitId,
@@ -218,13 +225,13 @@ export class HabitRepository {
 
   async skipHabit(habitId: string, skipData: SkipHabitRequest): Promise<void> {
     const skipId = `skip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const insertStmt = this.db.prepare(`
       INSERT INTO habit_skips (
         id, habit_id, user_id, reason
       ) VALUES (?, ?, ?, ?)
     `);
-    
+
     insertStmt.run(
       skipId,
       habitId,
@@ -242,9 +249,9 @@ export class HabitRepository {
       AND completed_at >= datetime('now', '-${days} days')
       ORDER BY completed_at DESC
     `);
-    
+
     const results = stmt.all(habitId) as any[];
-    
+
     return results.map(result => ({
       id: result.id,
       habitId: result.habit_id,
@@ -268,9 +275,9 @@ export class HabitRepository {
       AND skipped_at >= datetime('now', '-${days} days')
       ORDER BY skipped_at DESC
     `);
-    
+
     const results = stmt.all(habitId) as any[];
-    
+
     return results.map(result => ({
       id: result.id,
       habitId: result.habit_id,
@@ -289,11 +296,11 @@ export class HabitRepository {
     // Get total completions
     const completionsStmt = this.db.prepare('SELECT COUNT(*) as count FROM habit_completions WHERE habit_id = ?');
     const completionsResult = completionsStmt.get(habitId) as { count: number };
-    
+
     // Get total skips
     const skipsStmt = this.db.prepare('SELECT COUNT(*) as count FROM habit_skips WHERE habit_id = ?');
     const skipsResult = skipsStmt.get(habitId) as { count: number };
-    
+
     // For now, return basic stats (streak calculation would be more complex)
     return {
       totalCompletions: completionsResult.count,
@@ -308,14 +315,14 @@ export class HabitRepository {
       SELECT 
         id, user_id, name, description, category, tier, frequency,
         reminder_time, notes, priority, streak_tracking, skip_allowed,
-        start_date, is_active, created_at, updated_at
+        start_date, is_active, archived, created_at, updated_at
       FROM habits 
       WHERE user_id = ? AND category = ? AND is_active = 1
       ORDER BY priority DESC, created_at ASC
     `);
-    
+
     const results = stmt.all(userId, category) as any[];
-    
+
     return results.map(result => ({
       id: result.id,
       userId: result.user_id,
@@ -331,6 +338,7 @@ export class HabitRepository {
       skipAllowed: Boolean(result.skip_allowed),
       startDate: result.start_date,
       isActive: Boolean(result.is_active),
+      archived: Boolean(result.archived),
       createdAt: new Date(result.created_at),
       updatedAt: new Date(result.updated_at)
     }));

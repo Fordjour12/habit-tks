@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'ghost' | 'info';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   children: React.ReactNode;
@@ -25,6 +25,7 @@ const Button: React.FC<ButtonProps> = ({
     success: 'bg-success-600 hover:bg-success-700 focus:ring-success-500 text-white',
     danger: 'bg-danger-600 hover:bg-danger-700 focus:ring-danger-500 text-white',
     warning: 'bg-warning-600 hover:bg-warning-700 focus:ring-warning-500 text-white',
+    info: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white',
     ghost: 'bg-transparent hover:bg-gray-100 focus:ring-gray-500 text-gray-700 border border-gray-300'
   };
 

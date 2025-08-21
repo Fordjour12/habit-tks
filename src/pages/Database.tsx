@@ -4,6 +4,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Badge from '../components/Badge';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 interface DatabaseStatus {
   database: {
@@ -121,6 +122,34 @@ const Database: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // WebSocket test functions
+  const testWebSocketNotification = async (type: string) => {
+    try {
+      const response = await fetch('/api/database/test-websocket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showToast({
+          type: 'success',
+          title: 'WebSocket Test',
+          message: data.message
+        });
+      } else {
+        throw new Error('Failed to send WebSocket notification');
+      }
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to test WebSocket'
+      });
     }
   };
 
@@ -329,6 +358,49 @@ const Database: React.FC = () => {
               </div>
             ))
           )}
+        </div>
+      </Card>
+
+      {/* WebSocket Testing */}
+      <Card>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Real-time Updates Testing</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Test WebSocket notifications to see real-time updates in action. 
+          Make sure you have the WebSocket status indicator visible in the header.
+        </p>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Button
+            onClick={() => testWebSocketNotification('habit_completed')}
+            variant="success"
+            size="sm"
+          >
+            Test Habit Completed
+          </Button>
+          
+          <Button
+            onClick={() => testWebSocketNotification('habit_skipped')}
+            variant="warning"
+            size="sm"
+          >
+            Test Habit Skipped
+          </Button>
+          
+          <Button
+            onClick={() => testWebSocketNotification('tier_unlocked')}
+            variant="primary"
+            size="sm"
+          >
+            Test Tier Unlocked
+          </Button>
+          
+          <Button
+            onClick={() => testWebSocketNotification('streak_updated')}
+            variant="info"
+            size="sm"
+          >
+            Test Streak Updated
+          </Button>
         </div>
       </Card>
     </div>

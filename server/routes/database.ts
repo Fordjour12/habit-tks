@@ -2,20 +2,20 @@ import { Hono } from 'hono';
 import { databaseBackup } from '../database/backup';
 import { migrationManager } from '../database/migrations';
 import DatabaseConnection from '../database/connection';
+import { webSocketService } from '../services/WebSocketService';
 
 const databaseRoutes = new Hono();
 
 // Get database status
 databaseRoutes.get('/status', async (c) => {
   try {
-    const db = DatabaseConnection.getInstance().getConnection();
     const backupStats = databaseBackup.getBackupStats();
-    
+
     // Get database file info
     const dbPath = DatabaseConnection.getInstance().getDatabasePath();
     const fs = await import('fs');
     const dbStats = fs.statSync(dbPath);
-    
+
     return c.json({
       success: true,
       data: {
@@ -45,7 +45,7 @@ databaseRoutes.post('/backup', async (c) => {
   try {
     const { description } = await c.req.json();
     const backupPath = await databaseBackup.createBackup(description);
-    
+
     return c.json({
       success: true,
       message: 'Backup created successfully',
@@ -66,7 +66,7 @@ databaseRoutes.post('/backup', async (c) => {
 databaseRoutes.get('/backups', async (c) => {
   try {
     const backups = databaseBackup.getBackups();
-    
+
     return c.json({
       success: true,
       data: backups
@@ -85,16 +85,16 @@ databaseRoutes.post('/restore/:filename', async (c) => {
     const filename = c.req.param('filename');
     const backups = databaseBackup.getBackups();
     const backup = backups.find(b => b.filename === filename);
-    
+
     if (!backup) {
       return c.json({
         success: false,
         error: 'Backup not found'
       }, 404);
     }
-    
+
     await databaseBackup.restoreBackup(backup.path);
-    
+
     return c.json({
       success: true,
       message: 'Database restored successfully',
@@ -120,9 +120,9 @@ databaseRoutes.post('/reset', async (c) => {
         error: 'Database reset not allowed in production'
       }, 403);
     }
-    
+
     await migrationManager.reset();
-    
+
     return c.json({
       success: true,
       message: 'Database reset successfully'
@@ -139,7 +139,7 @@ databaseRoutes.post('/reset', async (c) => {
 databaseRoutes.post('/migrate', async (c) => {
   try {
     await migrationManager.migrate();
-    
+
     return c.json({
       success: true,
       message: 'Migrations completed successfully',
@@ -169,6 +169,72 @@ databaseRoutes.get('/migrations', async (c) => {
     return c.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get migration status'
+    }, 500);
+  }
+});
+
+// Test WebSocket notifications
+databaseRoutes.post('/test-websocket', async (c) => {
+  try {
+    const { type, userId = 'demo_user_123' } = await c.req.json();
+
+    switch (type) {
+      case 'habit_completed':
+        webSocketService.notifyHabitCompleted(userId, {
+          habitId: 'test_habit_123',
+          habitName: 'Test Habit',
+          tier: 'baseline',
+          completionId: 'test_completion_123',
+          completedAt: new Date()
+        });
+        break;
+
+      case 'habit_skipped':
+        webSocketService.notifyHabitSkipped(userId, {
+          habitId: 'test_habit_123',
+          habitName: 'Test Habit',
+          tier: 'baseline',
+          skipId: 'test_skip_123',
+          reason: 'Testing WebSocket notifications',
+          skippedAt: new Date()
+        });
+        break;
+
+      case 'tier_unlocked':
+        webSocketService.notifyTierUnlocked(userId, {
+          tier: 'tier2',
+          unlockedAt: new Date(),
+          message: 'Test tier unlock notification!'
+        });
+        break;
+
+      case 'streak_updated':
+        webSocketService.notifyStreakUpdated(userId, {
+          streak: 7,
+          previousStreak: 6,
+          updatedAt: new Date()
+        });
+        break;
+
+      default:
+        return c.json({
+          success: false,
+          error: 'Invalid notification type'
+        }, 400);
+    }
+
+    return c.json({
+      success: true,
+      message: `WebSocket notification sent: ${type}`,
+      data: {
+        connectedClients: webSocketService.getConnectedClientsCount(),
+        connectedUsers: webSocketService.getConnectedUsersCount()
+      }
+    });
+  } catch (error) {
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to send WebSocket notification'
     }, 500);
   }
 });

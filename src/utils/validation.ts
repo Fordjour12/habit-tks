@@ -47,7 +47,7 @@ export const completeHabitSchema = z.object({
   metrics: z.object({
     duration: z.number().min(1, 'Duration must be at least 1 minute').optional(),
     intensity: z.enum(['low', 'medium', 'high']).optional(),
-    additionalData: z.record(z.any()).optional(),
+    additionalData: z.record(z.string(), z.any()).optional(),
   }).optional(),
 });
 
@@ -70,7 +70,7 @@ export const validateForm = <T>(schema: z.ZodSchema<T>, data: unknown): { succes
   } catch (error) {
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {};
-      error.errors.forEach((err) => {
+      (error as any).errors.forEach((err: any) => {
         const field = err.path.join('.');
         errors[field] = err.message;
       });
@@ -87,7 +87,7 @@ export const validateField = <T>(schema: z.ZodSchema<T>, value: unknown, fieldNa
     return null;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const fieldError = error.errors.find(err => err.path.includes(fieldName));
+      const fieldError = (error as any).errors.find((err: any) => err.path.includes(fieldName));
       return fieldError ? fieldError.message : null;
     }
     return 'Validation failed';

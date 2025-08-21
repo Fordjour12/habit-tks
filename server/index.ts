@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { prettyJSON } from 'hono/pretty-json'
+import { webSocketService } from './services/WebSocketService'
 import { habitRoutes } from './routes/habits'
 import { userRoutes } from './routes/users'
 import { setupRoutes } from './routes/setup'
@@ -92,12 +93,16 @@ const port = process.env.PORT || 3055
 async function startServer() {
 	await initializeDatabase();
 
-	console.log(`🚀 Habit TKS server running on port ${port}`)
-
-	serve({
+	const server = serve({
 		fetch: app.fetch,
 		port: Number(port)
-	})
+	});
+
+	// Initialize WebSocket service
+	webSocketService.initialize(server);
+
+	console.log(`🚀 Habit TKS server running on port ${port}`);
+	console.log(`🔌 WebSocket service ready for real-time updates`);
 }
 
 startServer().catch((error) => {

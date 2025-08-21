@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { useToast } from '../components/ToastContainer';
 import { Target, Zap, Trophy, CheckCircle } from 'lucide-react';
-import FormField from '../components/FormField';
 import { createUserSchema, validateForm } from '../utils/validation';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -17,7 +16,7 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
     name: '',
     email: '',
   });
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,7 +25,6 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
     // Validate form data
     const validation = validateForm(createUserSchema, formData);
     if (!validation.success) {
-      setFieldErrors(validation.errors);
       showToast({
         type: 'error',
         title: 'Validation Error',
@@ -36,7 +34,6 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
     }
 
     setIsLoading(true);
-    setFieldErrors({});
 
     try {
       await createUser(validation.data);
@@ -126,11 +123,7 @@ const Setup: React.FC<SetupProps> = ({ onSetupComplete }) => {
               />
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-700 text-sm">{error}</p>
-              </div>
-            )}
+
 
             <button
               type="submit"

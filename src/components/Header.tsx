@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { Trophy, BarChart3, Settings, Home, Target, Palette, Database } from 'lucide-react';
+import WebSocketStatus from './WebSocketStatus';
 
 const Header: React.FC = () => {
   const { state } = useUser();
@@ -77,6 +78,9 @@ const Header: React.FC = () => {
 
           {/* User Info */}
           <div className="flex items-center space-x-4">
+            {/* WebSocket Status */}
+            <WebSocketStatus />
+            
             {state.user && (
               <div className="flex items-center space-x-3">
                 <div className="text-right">

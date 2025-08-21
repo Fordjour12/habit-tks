@@ -11,13 +11,13 @@ export class UserRepository {
 
   async createUser(userData: CreateUserRequest): Promise<User> {
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Insert user
     const insertUserStmt = this.db.prepare(`
       INSERT INTO users (id, email, name, current_tier, streak)
       VALUES (?, ?, ?, ?, ?)
     `);
-    
+
     insertUserStmt.run(
       userId,
       userData.email,
@@ -31,7 +31,7 @@ export class UserRepository {
       INSERT INTO user_settings (user_id, theme, notifications, strict_mode, auto_progression)
       VALUES (?, ?, ?, ?, ?)
     `);
-    
+
     insertSettingsStmt.run(
       userId,
       'light',
@@ -40,7 +40,11 @@ export class UserRepository {
       true
     );
 
-    return this.getUserById(userId);
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error('Failed to create user');
+    }
+    return user;
   }
 
   async getUserById(userId: string): Promise<User | null> {
@@ -61,9 +65,9 @@ export class UserRepository {
       LEFT JOIN user_settings us ON u.id = us.user_id
       WHERE u.id = ?
     `);
-    
+
     const result = stmt.get(userId) as any;
-    
+
     if (!result) return null;
 
     return {
@@ -101,9 +105,9 @@ export class UserRepository {
       LEFT JOIN user_settings us ON u.id = us.user_id
       WHERE u.email = ?
     `);
-    
+
     const result = stmt.get(email) as any;
-    
+
     if (!result) return null;
 
     return {
@@ -134,7 +138,7 @@ export class UserRepository {
         updated_at = CURRENT_TIMESTAMP
       WHERE user_id = ?
     `);
-    
+
     updateStmt.run(
       settings.theme,
       settings.notifications,
@@ -153,7 +157,7 @@ export class UserRepository {
     if (!updatedUser) {
       throw new Error('User not found after update');
     }
-    
+
     return updatedUser;
   }
 
@@ -163,14 +167,14 @@ export class UserRepository {
       SET current_tier = ?, updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `);
-    
+
     updateStmt.run(newTier, userId);
 
     const updatedUser = await this.getUserById(userId);
     if (!updatedUser) {
       throw new Error('User not found after update');
     }
-    
+
     return updatedUser;
   }
 
@@ -180,7 +184,7 @@ export class UserRepository {
       SET streak = ?, updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `);
-    
+
     updateStmt.run(newStreak, userId);
   }
 
@@ -208,9 +212,9 @@ export class UserRepository {
       LEFT JOIN user_settings us ON u.id = us.user_id
       ORDER BY u.created_at DESC
     `);
-    
+
     const results = stmt.all() as any[];
-    
+
     return results.map(result => ({
       id: result.id,
       email: result.email,

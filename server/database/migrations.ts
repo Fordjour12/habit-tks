@@ -39,11 +39,10 @@ export class MigrationManager {
   }
 
   public async migrate(): Promise<void> {
-    const currentVersion = this.getCurrentVersion();
-    const pendingMigrations = this.getPendingMigrations(currentVersion);
+    const pendingMigrations = this.getPendingMigrations(this.getCurrentVersion());
 
     if (pendingMigrations.length === 0) {
-      console.log('📊 Database is up to date (version', currentVersion, ')');
+      console.log('📊 Database is up to date (version', this.getCurrentVersion(), ')');
       return;
     }
 
@@ -52,22 +51,22 @@ export class MigrationManager {
     for (const migration of pendingMigrations) {
       try {
         console.log(`📊 Applying migration ${migration.version}: ${migration.name}`);
-        
+
         // Begin transaction
         this.db.exec('BEGIN TRANSACTION');
-        
+
         // Run migration
         migration.up(this.db);
-        
+
         // Record migration
         const insertStmt = this.db.prepare(
           'INSERT INTO migrations (version, name) VALUES (?, ?)'
         );
         insertStmt.run(migration.version, migration.name);
-        
+
         // Commit transaction
         this.db.exec('COMMIT');
-        
+
         console.log(`✅ Migration ${migration.version} applied successfully`);
       } catch (error) {
         // Rollback transaction
@@ -96,20 +95,20 @@ export class MigrationManager {
     for (const migration of migrationsToRollback) {
       try {
         console.log(`📊 Rolling back migration ${migration.version}: ${migration.name}`);
-        
+
         // Begin transaction
         this.db.exec('BEGIN TRANSACTION');
-        
+
         // Run rollback
         migration.down(this.db);
-        
+
         // Remove migration record
         const deleteStmt = this.db.prepare('DELETE FROM migrations WHERE version = ?');
         deleteStmt.run(migration.version);
-        
+
         // Commit transaction
         this.db.exec('COMMIT');
-        
+
         console.log(`✅ Migration ${migration.version} rolled back successfully`);
       } catch (error) {
         // Rollback transaction
@@ -137,12 +136,12 @@ export class MigrationManager {
         up: (db: Database.Database) => {
           createTables(db);
         },
-        down: (db: Database.Database) => {
+        down: () => {
           // This would drop all tables, but we'll make it safer
           console.log('⚠️  Rolling back initial schema - this will drop all data');
         }
       },
-      
+
       // Future migrations can be added here
       // {
       //   version: 2,
@@ -159,14 +158,14 @@ export class MigrationManager {
 
   public async reset(): Promise<void> {
     console.log('📊 Resetting database...');
-    
+
     // Drop all tables
     this.db.exec('DROP TABLE IF EXISTS migrations');
-    
+
     // Recreate everything
     this.ensureMigrationsTable();
     await this.migrate();
-    
+
     console.log('📊 Database reset completed');
   }
 }

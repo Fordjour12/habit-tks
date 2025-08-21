@@ -2,6 +2,7 @@ import { BASELINE_HABITS, TIER2_HABITS, TIER3_HABITS } from '../data/defaultHabi
 import { HabitService } from './HabitService';
 import { ProgressionService } from './ProgressionService';
 import { UserService } from './UserService';
+import { webSocketService } from './WebSocketService';
 
 export class SetupService {
 	constructor(
@@ -75,6 +76,13 @@ export class SetupService {
 			// Update user tier
 			await this.userService.updateUserTier(userId, 'tier2');
 
+			// Send real-time notification
+			webSocketService.notifyTierUnlocked(userId, {
+				tier: 'tier2',
+				unlockedAt: new Date(),
+				message: 'Congratulations! You\'ve unlocked Tier 2 habits. Keep up the momentum!'
+			});
+
 			return {
 				message: 'Congratulations! You\'ve unlocked Tier 2 habits. Keep up the momentum!'
 			};
@@ -94,6 +102,13 @@ export class SetupService {
 			// Update user tier
 			await this.userService.updateUserTier(userId, 'tier3');
 
+			// Send real-time notification
+			webSocketService.notifyTierUnlocked(userId, {
+				tier: 'tier3',
+				unlockedAt: new Date(),
+				message: 'Amazing! You\'ve reached Tier 3. You\'re now operating at peak performance!'
+			});
+
 			return {
 				message: 'Amazing! You\'ve reached Tier 3. You\'re now operating at peak performance!'
 			};
@@ -105,7 +120,8 @@ export class SetupService {
 	private async createBaselineHabits(userId: string): Promise<any[]> {
 		const createdHabits = [];
 		for (const habitTemplate of BASELINE_HABITS) {
-			const habit = await this.habitService.createHabit(userId, {
+			const habit = await this.habitService.createHabit({
+				userId,
 				name: habitTemplate.name,
 				description: habitTemplate.description,
 				category: habitTemplate.category,
@@ -125,7 +141,8 @@ export class SetupService {
 
 	private async createTier2Habits(userId: string): Promise<void> {
 		for (const habitTemplate of TIER2_HABITS) {
-			await this.habitService.createHabit(userId, {
+			await this.habitService.createHabit({
+				userId,
 				name: habitTemplate.name,
 				description: habitTemplate.description,
 				category: habitTemplate.category,
@@ -143,7 +160,8 @@ export class SetupService {
 
 	private async createTier3Habits(userId: string): Promise<void> {
 		for (const habitTemplate of TIER3_HABITS) {
-			await this.habitService.createHabit(userId, {
+			await this.habitService.createHabit({
+				userId,
 				name: habitTemplate.name,
 				description: habitTemplate.description,
 				category: habitTemplate.category,

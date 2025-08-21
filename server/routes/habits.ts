@@ -69,7 +69,10 @@ habitRoutes.post('/', async (c) => {
 		const body = await c.req.json() as CreateHabitRequest;
 		const habitService = c.get('habitService') as HabitService;
 
-		const habit = await habitService.createHabit(MOCK_USER_ID, body);
+		const habit = await habitService.createHabit({
+			...body,
+			userId: MOCK_USER_ID
+		});
 
 		return c.json({
 			success: true,

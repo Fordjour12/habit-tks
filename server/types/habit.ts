@@ -39,6 +39,7 @@ export type Frequency = 'daily' | 'weekly' | 'monthly' | 'custom';
 export type Priority = 'low' | 'medium' | 'high';
 
 export interface CreateHabitRequest {
+	userId: string;
 	name: string;
 	description: string;
 	category: HabitCategory;
@@ -53,6 +54,7 @@ export interface CreateHabitRequest {
 }
 
 export interface CompleteHabitRequest {
+	userId: string;
 	notes?: string;
 	metrics?: {
 		duration?: number;
@@ -62,5 +64,6 @@ export interface CompleteHabitRequest {
 }
 
 export interface SkipHabitRequest {
+	userId: string;
 	reason: string;
 }

@@ -1,6 +1,7 @@
 import { Habit, HabitCompletion, HabitTier, CreateHabitRequest, CompleteHabitRequest, SkipHabitRequest } from '../types/habit';
 import { ProgressionService } from './ProgressionService';
 import { AnalyticsService } from './AnalyticsService';
+import { webSocketService } from './WebSocketService';
 
 export class HabitService {
 	private habits: Map<string, Habit> = new Map();
@@ -11,11 +12,10 @@ export class HabitService {
 		private analyticsService: AnalyticsService
 	) { }
 
-	async createHabit(userId: string, habitData: CreateHabitRequest): Promise<Habit> {
+	async createHabit(habitData: CreateHabitRequest): Promise<Habit> {
 		const habit: Habit = {
 			...habitData,
 			id: this.generateId(),
-			userId,
 			startDate: new Date(habitData.startDate),
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -52,6 +52,15 @@ export class HabitService {
 		// Update analytics
 		await this.analyticsService.trackCompletion(completion);
 
+		// Send real-time notification
+		webSocketService.notifyHabitCompleted(userId, {
+			habitId: habit.id,
+			habitName: habit.name,
+			tier: habit.tier,
+			completionId: completion.id,
+			completedAt: completion.completedAt
+		});
+
 		return completion;
 	}
 
@@ -77,6 +86,16 @@ export class HabitService {
 
 		this.completions.set(skipCompletion.id, skipCompletion);
 		await this.analyticsService.trackSkip(skipCompletion);
+
+		// Send real-time notification
+		webSocketService.notifyHabitSkipped(userId, {
+			habitId: habit.id,
+			habitName: habit.name,
+			tier: habit.tier,
+			skipId: skipCompletion.id,
+			reason: data.reason,
+			skippedAt: skipCompletion.completedAt
+		});
 
 		// Check for penalties
 		await this.progressionService.checkPenalties(userId);

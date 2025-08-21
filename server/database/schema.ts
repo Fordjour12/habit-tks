@@ -55,6 +55,7 @@ export const createTables = (db: Database.Database): void => {
       skip_allowed BOOLEAN NOT NULL DEFAULT 1,
       start_date DATE NOT NULL,
       is_active BOOLEAN NOT NULL DEFAULT 1,
+      archived BOOLEAN NOT NULL DEFAULT 0,
       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
